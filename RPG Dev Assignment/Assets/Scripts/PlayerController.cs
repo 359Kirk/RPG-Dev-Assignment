@@ -40,10 +40,11 @@ public class PlayerController : MonoBehaviourPun
             Attack();
 
         float mouseX = (Screen.width / 2) - Input.mousePosition.x;
+
         if (mouseX < 0)
-            weaponAnim.transform.parent.localScale = new Vector3(-1, 1, 1);
-        else
             weaponAnim.transform.parent.localScale = new Vector3(1, 1, 1);
+        else
+            weaponAnim.transform.parent.localScale = new Vector3(-1, 1, 1);
     }
 
     void Move()
@@ -115,12 +116,15 @@ public class PlayerController : MonoBehaviourPun
     {
         id = player.ActorNumber;
         photonPlayer = player;
+        Debug.Log(id);
+        GameManager.instance.players[id - 1] = this;
+
         // initialize the health bar
         if (player.IsLocal)
             me = this;
         else
             rig.isKinematic = true;
-        GameManager.instance.players[id - 1] = this;
+        
     }
 
     [PunRPC]
