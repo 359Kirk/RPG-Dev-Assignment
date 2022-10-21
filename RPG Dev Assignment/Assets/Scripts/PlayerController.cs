@@ -27,9 +27,11 @@ public class PlayerController : MonoBehaviourPun
     public Player photonPlayer;
     public SpriteRenderer sr;
     public Animator weaponAnim;
+    public HeaderInfo headerInfo;
 
     // local player
     public static PlayerController me;
+    
 
     void Update()
     {
@@ -60,14 +62,19 @@ public class PlayerController : MonoBehaviourPun
     void Attack()
     {
         lastAttackTime = Time.time;
+
         // calculate the direction
         Vector3 dir = (Input.mousePosition - Camera.main.WorldToScreenPoint(transform.position)).normalized;
+
         // shoot a raycast in the direction
         RaycastHit2D hit = Physics2D.Raycast(transform.position + dir, dir, attackRange);
+
         // did we hit an enemy?
         if (hit.collider != null && hit.collider.gameObject.CompareTag("Enemy"))
         {
             // get the enemy and damage them
+            Enemy enemy = hit.collider.GetComponent<Enemy>();
+            enemy.photonView.RPC("TakeDamage", RpcTarget.MasterClient, damage);
         }
         // play attack animation
         weaponAnim.SetTrigger("Attack");
@@ -78,6 +85,7 @@ public class PlayerController : MonoBehaviourPun
     {
         curHp -= damage;
         // update the health bar
+        headerInfo.photonView.RPC("UpdateHealthBar", RpcTarget.All, curHp);
         if (curHp <= 0)
             Die();
         else
@@ -95,7 +103,7 @@ public class PlayerController : MonoBehaviourPun
     void Die()
     {
         dead = true;
-        rig.isKinematic = true;
+        rig.isKinematic = true; 
         transform.position = new Vector3(0, 99, 0);
         Vector3 spawnPos = GameManager.instance.spawnPoints[Random.Range(0, GameManager.instance.spawnPoints.Length)].position;
         StartCoroutine(Spawn(spawnPos, GameManager.instance.respawnTime));
@@ -104,11 +112,14 @@ public class PlayerController : MonoBehaviourPun
     IEnumerator Spawn(Vector3 spawnPos, float timeToSpawn)
     {
         yield return new WaitForSeconds(timeToSpawn);
+
         dead = false;
         transform.position = spawnPos;
         curHp = maxHp;
         rig.isKinematic = false;
+
         // update the health bar
+        headerInfo.photonView.RPC("UpdateHealthBar", RpcTarget.All, curHp);
     }
 
     [PunRPC]
@@ -120,6 +131,9 @@ public class PlayerController : MonoBehaviourPun
         GameManager.instance.players[id - 1] = this;
 
         // initialize the health bar
+        headerInfo.Initialize(player.NickName, maxHp);
+
+        
         if (player.IsLocal)
             me = this;
         else
@@ -132,13 +146,18 @@ public class PlayerController : MonoBehaviourPun
     {
         curHp = Mathf.Clamp(curHp + amountToHeal, 0, maxHp);
         // update the health bar
+
+        //update the health bar
+        headerInfo.photonView.RPC("UpdateHealthBar", RpcTarget.All, curHp);
     }
 
     [PunRPC]
     void GiveGold(int goldToGive)
     {
         gold += goldToGive;
+
         // update the ui
+        GameUI.instance.UpdateGoldText(gold);
     }
 
 
